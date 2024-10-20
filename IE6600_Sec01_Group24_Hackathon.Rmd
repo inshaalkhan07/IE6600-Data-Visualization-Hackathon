@@ -1,0 +1,412 @@
+---
+title: "IE6600_Sec01_Group24_Hackathon"
+author: "Manjari Pandya, Mohammad Inshaal Khan, Vinay Sridhar - Group 24"
+output: html_document
+date: "2023-02-12"
+---
+## Introduction
+### The Independent Evaluation Group (IEG) is a vital unit within the World Bank Group with a mission to improve development results and evaluate the Bank Group’s self-evaluation and development risk management systems. The IEG World Bank Project Performance Ratings Dataset is a collection of ratings from all World Bank project assessments performed independently by IEG. Spanning over 30 years, The IEG World Bank Project Performance Ratings Dataset contains a collection of performance ratings from all the World Bank project assessments conducted by IEG. The dataset has data from over 11,260 project assessments covering more than 9,400 completed projects and is the longest-running project performance data collection of its kind. The ratings are based on a common objectives-based project evaluation methodology and use standardized scales to assign performance ratings.
+
+## Problem Statement
+### Despite numerous government programs aimed at solving various issues such as health, food assistance, education, and housing, it remains a challenge to measure the success and growth of these projects. The IEG World Bank Project Performance Ratings Dataset aims to provide an in-depth analysis of the success rate and project performance of the different programs in which the World Bank has invested. However, the data collected by IEG is vast and complex, making it difficult for stakeholders to understand and use it to make informed decisions. It's essential to have a reliable system in place to assess the success rate of these programs and to provide a performance rating to the World Bank's investment in these programs. The goal of this data visualization project is to create a user-friendly and interactive platform that presents the IEG World Bank Project Performance Ratings Dataset in a way that is accessible, informative, and visually appealing. The platform should allow stakeholders to easily analyze the performance of specific projects, compare performance across projects and programs, and identify trends and patterns in the data. The aim of this data visualization project is to showcase the performance ratings of World Bank projects and to provide insights into the effectiveness of these programs. By presenting the data in a visually engaging and straightforward manner, this project aims to help stakeholders make informed decisions and improve the development results of the World Bank Group across various regions of the world.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Libraries, include= FALSE}
+# Importing all required libraries
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(ggrepel)
+library(cowplot)
+library(Hmisc)
+library(lessR)
+library(stringr)
+library(lubridate)
+library(plotly)
+library(fmsb)
+library(multipanelfigure)
+library(gridExtra)
+library(patchwork)
+library(egg)
+#install.packages("gganimate")
+#install.packages("ggthemes")
+library(ggthemes)
+library(gganimate)
+
+```
+
+```{r Data, include=FALSE, echo=FALSE}
+
+# Importing the dataset
+df <- read_csv('~/Desktop/IE 6600-Sec1/World_Bank_Dataset.csv')
+```
+
+```{r Task DataProcessing, echo=FALSE } 
+#head(df)
+#summary(df)
+#names(df)
+#nrow(df)
+#ncol(df)
+#dim(df)
+#colSums(is.na(df))
+df <- df[!is.na(df$`Country Code`),]
+#dim(df)
+```
+## Section 1 
+### In this section we will be delving into a regional analysis of World Bank financed projects. The World Bank operates in various administrative regions across the world, including Africa (AFR), East Asia Pacific (EAP), Europe and Central Asia (ECA), Latin America and Caribbean (LCR), Middle East and North Africa (MNA), and South Asia (SAR). This analysis will provide a comprehensive overview of the World Bank's activities and their impact in each of these regions.
+### Question 1
+#### Which region in the world has the maximum number of countries where the World Bank is financing different kinds of projects?
+```{r Section 1 Question 1, echo=FALSE }
+# Combining Africa East and Africa West records into Africa
+df$Region[df$Region == 'AFE' | df$Region == 'AFW'] <- 'AFR'
+
+# Performing group by Region and finding the total count of unique country names
+df1<-df
+df1 <- df1 %>% group_by(Region) %>%
+dplyr::summarize(counter = length(unique(`Country Code`)))
+
+# Plotting a bar graph of Regions as well number of countries in each region
+gp1 <- ggplot(df1, aes(x = Region, y = counter, fill=Region)) +
+  geom_bar(stat = "identity") +
+  #for adding labels to the bar plot
+  geom_text(aes(label= counter),position=position_dodge(width=0.9), vjust=-0.25)+
+  xlab("Region") + # X-axis name
+  ylab("Number of Countries") + # Y-Axis name#33CCFF"
+  ggtitle("Number of Countries in Each Region") + theme_bw() + scale_fill_manual(values = c("#33FFFF","#330099", "#0000FF", "#3399FF","#000066","#33FFFF")) + theme(plot.title = element_text(hjust = 0.5)) +
+labs(caption="*AFR: Africa \n*EAP: East Asia Pacific \n*ECA: Europe and Central Asia\n*LCR: Latin American and Caribbean\n*MNA: Middle East and North Africa\n*SAR: South Asia", ) + theme(plot.caption = element_text(hjust = 0)) # Adding captions, Title of plot, removing grey background, filling hex colors, setting alignment of title
+
+gp1
+```
+
+
+### Output 1 
+#### It's evident that the World Bank is providing financial support to projects across the six regions of the world. We observed that the African Region (AFR) consists of the highest number of countries (51) that were offered loans by the World Bank for various projects. From our analysis, we also noticed that the South Asian Region (SAR) consists of the least number of countries (9) that were offered loans by the World Bank for various projects.
+
+### Question 2
+#### What are the top 5 countries in the world that have received the highest grant from the World Bank?
+```{r Section 1 Question 2, echo=FALSE }
+df2 <- df
+
+# Replacing null values in Lending Project Cost with 0
+df2['Lending Project Cost'][is.na(df2['Lending Project Cost'])] <- 0
+
+# Performing group by Country Name and finding the total investments on projects
+df2 <- df2 %>% group_by(`Country Name`)%>% dplyr::summarise(Total_investments_on_projects = sum(`Lending Project Cost`))
+
+# Arranging the result in descending order and retrieving only top 10 records
+df2 <- df2[order(df2$Total_investments_on_projects, decreasing = TRUE),]
+df2 <- head(df2,10)
+df2<-df2%>%mutate(splits_int = factor(`Country Name`) %>% as.integer())
+
+# Plotting the line plot which displays the top 10 countries having highest lending project cost.
+gp2 <- ggplot(data=df2, aes(x=`Country Name`, y=Total_investments_on_projects, group = 1)) +
+geom_line(color = "#3399FF", size = 1.5) + geom_point(color = "#000066", size = 3.5) + # Setting line color
+xlab('Country Name') + ylab('Total Investment on Projects') +  # Setting the labels on x and y axes
+ggtitle("Top 10 countries having highest lending project cost")+ theme_bw() +# Setting the title of the plot 
+theme(plot.title = element_text(hjust = 0.5)) +#adding animation to the graph
+transition_reveal(splits_int)
+gp2
+
+
+```
+
+### Output 2
+#### From the line plot, we observed that the top 5 countries that have received the highest grant from the World Bank are in the following order: China > India > Mexico > Brazil > Pakistan. The amount that these countries received is the sum of all the grants that they received from the World Bank for various projects over the years.
+
+### Question 3
+#### What are the top three sector boards with the most number of projects across all six regions?
+```{r Section 1 Question 3, echo=FALSE }
+# Data Cleaning and processing
+world_bank<-data.frame(df)
+world_bank$Region[world_bank$Region == 'AFE' | world_bank$Region == 'AFW'] <- 'AFR'
+#In each 6 region which sector has the maximum number of projects financed by WB. group by 
+#maxof projects_region=according to each region which sector has max projects
+Max_of_projects_Region<-world_bank%>%
+  group_by(Region,Sector.Board)%>%
+  summarise(no_of_projects=n())
+#Max_of_projects_Region%>%
+  #filter(no_of_projects == max(no_of_projects, na.rm=TRUE))
+#each sector board having no. of projects ##max_of_projects_sector
+#Max_of_projects_Sector<-
+Max_of_projects_Sector<-world_bank%>%
+  group_by(Sector.Board,Region)%>%
+  summarise(no_of_projects=n())%>%
+  drop_na()
+#Max_of_projects_Sector%>%
+#  group_by(Sector.Board)%>%
+#  summarise(no_of_projects=sum(no_of_projects))
+##each region dedicating the project in each sector
+no_of_project<-world_bank%>%
+  group_by(Region,Sector.Board)%>%
+  summarise(no_of_projects=n())%>%
+  drop_na()
+
+#each region dedicating the project in each sector
+no_of_project_plot <- ggplot(no_of_project, aes(fill=Region, y=no_of_projects, x=Sector.Board)) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.4, hjust=1))+
+  geom_bar(stat="identity",width=0.40) +
+  coord_flip()+
+  ggtitle('Number of projects of each sector in each sector')+ # Setting title
+  xlab('Sector Board')+ylab('Number of Projects') + theme_bw() + scale_fill_manual(values = c("#000066","#330099", "#0000FF", "#3399FF","#33CCFF","#33FFFF")) + theme(plot.title = element_text(hjust = 0.5)) +
+labs(caption="*AFR: Africa \n*EAP: East Asia Pacific \n*ECA: Europe and Central Asia\n*LCR: Latin American and Caribbean\n*MNA: Middle East and North Africa\n*SAR: South Asia", ) + theme(plot.caption = element_text(hjust = 0)) # Setting captions, labels, removing grey background, setting hex colour codes, adjusting title alignment
+no_of_project_plot
+
+```
+
+
+### Output 3
+#### From the stacked bar plot, we can observe that among the 28 sector boards, Agriculture & Rural Development tops the list with the highest number of projects across all six regions. Energy & Mining and Transport follow closely behind as the second and third sector boards with the most number of projects across all six regions.
+
+### Question 4
+#### What is the percentage distribution of the projects according to the sector board in South Asia Region?
+```{r Section 1 Question 4, echo=FALSE }
+##LCR dedicating the projects in each sector of south asia region
+LCR_df<-world_bank
+LCR_df<-LCR_df%>%
+  filter(Region=='SAR')%>%
+  dplyr::group_by(Sector.Board)%>%
+  summarise(no_of_projects=sum(Lending.Project.Cost))%>%
+  drop_na()
+# Finding the percentages
+LCR_df<-LCR_df %>% mutate(Percentage = round(no_of_projects/sum(no_of_projects)*100))
+LCR_df<-LCR_df%>%
+  arrange(-Percentage)
+LCR_df<-LCR_df[LCR_df$Percentage != 0, ]
+#for position
+posit_lab<-LCR_df
+posit_lab <- posit_lab %>% 
+  mutate(csum = rev(cumsum(rev(Percentage))), 
+         pos = Percentage/2 + lead(csum, 1),
+         pos = if_else(is.na(pos), Percentage/2, pos))
+  
+#plotting the data
+ggplot(posit_lab, aes(x = "" , y = Percentage, fill = fct_inorder(Sector.Board))) +
+  geom_col(width = 1, color = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_brewer(palette = "BuPu") + # Using Hex colors) +
+  geom_label_repel(data = posit_lab,
+                   aes(y = pos, label = paste0(Percentage, "%"),segment.colour = "black"),
+                   fill = "white",size = 3, nudge_x = 0.8, show.legend = FALSE) +
+  #geom_text_repel(aes(label = Percentage))+
+  guides(fill = guide_legend(title = "Sector")) +
+  theme_void()
+  
+ 
+```
+
+
+### Output 4
+#### In the South Asian region, a majority of projects are focused on environmental sustainability (59%) and poverty reduction (28%). Conversely, relatively few projects are dedicated to capital markets practices and financial systems, with only 1% to 2% of projects falling into these sector board categories.
+
+## Section 2 
+### In this section, we'll delve into the lending constraints for projects financed by the World Bank. We'll focus on three key constraints: the agreement type between the borrower and the World Bank, and the total project lending cost, which is the total loan amount provided by the World Bank for a specific project and lending instrument type which are of three types Development Policy Financing(DPF), Investment Project Financing (IPF) and Program for Results Financing (PforR).
+
+### Question 1:
+#### What are the top 2 agreement types signed between the borrower and the World Bank for all the projects approved after 2000?
+```{r Section 2 Question 1, echo=FALSE }
+df21 <- df
+# Filtering the records to contain only those projects approved after 2000
+df21 <- df21 %>% filter(df21$`Approval FY` > 2000)
+# Grouping by Agreement Type and Approval Year and finding the total count
+df21 <- df21 %>% group_by(`Agreement Type`, `Approval FY`)%>% 
+  dplyr::summarise(Total_cnt = n())
+# Arranging the outputs in order
+df21<-df21%>%
+  arrange(-`Approval FY`)
+#min(df21$`Approval FY`)
+
+#Plotting the bubble chart 
+gp3 = ggplot(data=df21, aes(x=df21$`Agreement Type`, y=as.numeric(df21$`Approval FY`),
+        color=df21$`Agreement Type`, size=df21$Total_cnt)) +
+  geom_jitter(width=0.1, height=0.2, stat="identity") + # Geom Jitter method
+  xlab('Agreement Type') + ylab('Approval Year') + # Setting the Labels
+  guides(color=guide_legend(title="\n\n\n\n\n\nAgreement Type"), size = guide_legend(title = "Total count")) + scale_color_manual(values = c("#3399FF","#3399FF", "#4682B4", "#4682B4","#330099","#330099","#330099","#330099")) +
+  ggtitle('AgreementTypes signed by borrower&WorldBank for projects approved after 2000') + # Setting the Title
+  theme_bw() + # Removing grey background
+  theme(plot.title = element_text(hjust = 0)) +
+ # Adjusting the heading alignment
+labs(caption="*CARB: Carbon Initiative\n*GEF: Global Environment Fund \n*IBRD: International Bank for Reconstruction and Development\n*IDA: International Development Association\n*IDF: Institutional Development Fund\n*MONT: Montreal Protocol\n*RETF: Recipient Executed Trust Fund\n*SPF: Special Fund" )  +
+  theme(plot.caption = element_text(hjust = 0)) # Adding captions
+gp3
+
+```
+
+
+### Output 1
+#### According to the bubble chart analysis, the most frequently signed agreement types between borrowers and the World Bank for projects approved post-2000 are the International Development Association (IDA) and the International Bank for Reconstruction and Development (IBRD). The Recipient Executed Trust Fund (RETF) also features as a notable agreement type, albeit to a lesser extent.
+
+### Question 2:
+#### For all the projects that have lending project cost more than 1 billion dollars, what was the Lending Instrument Type that was most commonly used?
+```{r Section 2 Question 2, fig.show="hold", out.width="90%", echo=FALSE }
+df23 <- df
+# Filtering the data frame to retrieve only these records that have lending project cost greater than 1 billion dollars
+df23 <- df23 %>% filter(df23$`Lending Project Cost` >= 1000000000)
+# Grouping by Lending Instrument Type and finding total count
+df23 <- df23 %>% group_by(`Lending Instrument Type`)%>% dplyr::summarise(Total_Count = n())
+
+# Initializing the slices and labels
+slices <- df23$Total_Count
+lbls <- df23$`Lending Instrument Type`
+
+# Mutating the data and calculating the percentages
+df23<-df23%>%
+  mutate(Percentage=(Total_Count/sum(Total_Count)*100))
+hsize <- 1.5
+df23 <- df23 %>% 
+  mutate(x = hsize)
+df23<-df23%>%
+  arrange(-Percentage)
+
+#plotting donut chart
+ggplot(df23, aes(x = hsize, y =Percentage, fill = `Lending Instrument Type`)) + # Fill is used to represent various categories with different colors
+  geom_col() +
+  coord_polar(theta = "y",start=0,direction = -1) +
+  xlim(c(0.2, hsize + 0.5)) + scale_fill_manual(values = c("#3399FF","#99CCFF","#33FFFF")) + 
+  theme(plot.title = element_text(hjust = 0.5)) + # Setting the x-limits
+  geom_text(aes(label = paste0(round(Percentage, digits = 2),"%"), group =`Lending Instrument Type`),
+           position = position_stack(vjust = 0.5),show.legend = FALSE,inherit.aes = TRUE)+
+  # geom_label( # Setting the labels
+  #   aes(label = paste(Percentage, "%"), position = position_stack(vjust = 0.5)),
+  #   inherit.aes = TRUE,
+  #   show.legend = FALSE) + 
+  ggtitle('Percentages of all the lending instrument types being used') + # Setting the Title
+  labs(caption="*DPF: Development Policy Financing\n*IPF: Investment Project Financing \n*PforR: Program for Results  Financing") + 
+  theme(plot.caption = element_text(hjust = 0))+ # Adding captions
+  theme_void() # Removing grey background
+```
+
+
+### Output 2
+#### From the pie chart, we observed that the most commonly used Lending Instrument Type is Investment Project Financing (IPF) - 75.53% followed by Development Policy Financing (DPF) - 23.93%.
+
+## Section 3 
+### In this section, we'll delve into the analysis of the project success rate financed that were financed by the World Bank.  
+### Question 1
+#### Which region had the maximum number of projects with Satisfactory and Unsatisfactory outcomes for the overall performance of the project. 
+```{r  Section3question1,figures-side, fig.show="hold", out.width="50%", echo=FALSE }
+world_bank<-df
+world_bank$Region[world_bank$Region == 'AFE' | world_bank$Region == 'AFW'] <-'AFR'
+rating_df<- world_bank
+#rating_df
+#selecting the subset of original data
+rating_df= subset(rating_df, select = c(Region,IEG_OverallBankPerf) )
+#deleting the unnecessary data
+rating_df$IEG_OverallBankPerf[rating_df$IEG_OverallBankPerf == 'NOT RATED' | rating_df$IEG_OverallBankPerf == "NOT APPLICABLE" |rating_df$IEG_OverallBankPerf == "NOT AVAILABLE" ] <- '0'
+rating_df$IEG_OverallBankPerf[rating_df$IEG_OverallBankPerf=="0"]<-NA
+rating_df<-rating_df%>%
+  drop_na()
+#rating_df
+#grouping the data for the plotting
+rating_df<-rating_df%>%
+   group_by(Region,IEG_OverallBankPerf)%>%
+   summarise(projects=n())
+rating_df<-rating_df%>%
+  drop_na()
+#unique(rating_df$IEG_OverallBankPerf)
+#rating_df$IEG_OverallBankPerf<-replace(rating_df$IEG_OverallBankPerf, rating_df$IEG_OverallBankPerf=="", "SATISFACTORY")
+#pivot wider for radarplot
+rating_df<-rating_df %>%
+  pivot_wider(names_from = IEG_OverallBankPerf, values_from = projects)
+#adding maximum and minimum to the dataframe
+max_min <- data.frame(
+  Region = c("Max","Min"),
+ 'HIGHLY UNSATISFACTORY'= c(865, 5),  'MODERATELY SATISFACTORY'= c(865, 5), 'SATISFACTORY' = c(865, 5),
+  'UNSATISFACTORY' = c(865, 5), 'MODERATELY UNSATISFACTORY' = c(865, 5), 'HIGHLY UNSATISFACTORY' = c(865, 5)
+)
+colnames(max_min) <- c("Region","HIGHLY SATISFACTORY","HIGHLY UNSATISFACTORY","MODERATELY SATISFACTORY","MODERATELY UNSATISFACTORY","SATISFACTORY","UNSATISFACTORY")
+#new dataframes are created
+df_final_radar <- rbind(max_min, rating_df)
+df_final_radar<-data.frame(df_final_radar)
+df_final_radar$Region<-as.numeric(df_final_radar$Region)
+drop <- c("Region")
+df_final_radar = df_final_radar[,!(names(df_final_radar) %in% drop)]
+
+rownames(df_final_radar) <- c("Max", "Min","AFR","EAP","ECA","LCR","MNA","SAR")
+student1_data <- df_final_radar[c("Max","Min","AFR","EAP","ECA","LCR","MNA","SAR"), ]
+#plotting
+#creating a dummy function
+create_beautiful_radarchart <- function(data, color = "#00AFBB", 
+                                        vlabels = colnames(data), vlcex = 0.7,
+                                        caxislabels = NULL, title = NULL, ...){
+  radarchart(
+    data, axistype = 1,
+    # Customize the polygon
+    pcol = color, pfcol = scales::alpha(color, 0.7), plwd = 2, plty = 1,
+    # Customize the grid
+    cglcol = "grey", cglty = 1, cglwd = 0.8,
+    # Customize the axis
+    axislabcol = "grey", 
+    # Variable labels
+    vlcex = vlcex, vlabels = vlabels,
+    caxislabels = caxislabels, title = title, ...
+  )
+}
+#op <- par(mar = c(1, 2, 2, 2))
+
+# Define colors and titles
+colors <- c("#000066", "#330099", "#0000FF", "#3399FF","#33CCFF","#33FFFF")
+titles <- c("AFR","EAP","ECA","LCR","MNA","SAR")
+# Reduce plot margin using par()
+# Split the screen in 3 parts
+#op <- par(mar = c(1,1,1,1))
+#par(mfrow = c(1,6))
+## Create the radar charts
+for(i in 1:6){
+  create_beautiful_radarchart(
+    data = student1_data[c(1, 2, i+2), ],
+    color = colors[i], title = titles[i]
+    )
+}
+
+```
+
+### Output 1
+#### It can be observed that only South Asian Region (SAR) and Middle East and North Africa (MNA) regions have less projects with highly and moderately satisfactory rating. In comparison to that, African Region (AFR), East Asian Pacific (EAP) and Europe and Central Asia (ECA) regions have more number of projects with satisfactory rating. Particularly, it can be seen that AFR region has the highest number of projects with satisfactory rating. Also, African Region (AFR) contains high number of moderately satisfactory ratings.
+
+
+### Question 2
+#### What is the median lending project cost for all the projects in India having Highly Satisfactory and Unsatisfactory Project Outcome?
+```{r Section 3 Question 3, echo=FALSE }
+df33a <- df
+# Filtering out those records which are related to India and having unsatisfactory project outcomes
+df33a <- df33a %>% filter(df33a$`Country Name` == 'India' & (df33a$IEG_Outcome == 'Unsatisfactory' | df33a$IEG_Outcome == 'Highly Satisfactory'))
+
+# Plotting the violin plot of lending project cost
+fig1 <- df33a %>%
+  plot_ly(
+    x = ~IEG_Outcome,
+    y = ~`Lending Project Cost`,
+    color = ~IEG_Outcome,
+    colors = c("#000066","#330099"),
+    type = 'violin',
+    box = list(
+      visible = T
+    )
+  ) 
+# Setting the labels across x and y axes
+fig1 <- fig1 %>%
+  layout(
+    xaxis = list(
+      title = "Violin plot"
+    ),
+    yaxis = list(
+      title = "Lending Project Cost",
+      zeroline = F
+    )
+  )
+
+fig1
+```
+
+### Output 2
+#### From the violin plot, we observed that the median lending project cost for all projects in India having Unsatisfactory project outcomes is 315.75 million dollars and Highly Satisfactory project outcome is 328 million dollars.
+
+## Summary and Conclusion
+### In conclusion, the World Bank is actively providing financial support to projects in the six regions of the world, with the African Region being the most benefited with 51 countries receiving loans for various projects. The top five countries receiving the highest grant from the World Bank are China, India, Mexico, Brazil, and Pakistan. The sector board with the highest number of projects across all six regions is Agriculture & Rural Development, followed by Energy & Mining and Transport. In the South Asian Region, most of the projects are focused on environmental sustainability and poverty reduction, with fewer projects dedicated to capital markets practices and financial systems. The visualization project provides a clear picture of the World Bank's focus and efforts in supporting the growth and development of different countries and regions.
+###          Also, we observed that the World Bank primarily signs agreements with borrowers for projects approved post-2000 through the International Development Association (IDA) and the International Bank for Reconstruction and Development (IBRD). Although the Recipient Executed Trust Fund (RETF) is also used, it is used to a lesser extent. The most commonly used Lending Instrument Type is Investment Project Financing (IPF), accounting for 75.53% of all lending instruments, followed by Development Policy Financing (DPF) at 23.93%. These findings provide insight into the World Bank's lending practices and highlight the importance of IDA and IBRD as the primary agreement types and IPF as the primary lending instrument type used for projects approved after 2000.
+
+###          In addition to this we observed that the South Asian Region (SAR) and the Middle East and North Africa (MNA) have fewer projects with high and moderate satisfaction ratings compared to other regions. On the other hand, the African Region (AFR), the East Asian Pacific (EAP), and the Europe and Central Asia (ECA) regions have a higher number of projects with satisfactory ratings, with the AFR region having the highest number of satisfactory ratings. The violin plot also shows that for India, the median lending project cost for projects with unsatisfactory outcomes is 315.75 million dollars, while for projects with highly satisfactory outcomes, it is 328 million dollars. These findings provide valuable information about the performance of World Bank projects across different regions and their impact on the countries they serve.
